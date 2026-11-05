@@ -1,0 +1,1228 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Corde vive</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: una colonna da strumento tascabile, la tastiera di corde occupa il centro, comandi sotto. Look unico scuro, scelto. */
+:root{
+  color-scheme: dark;
+  --bg:#0c0c0e; --panel:#141417; --line:#2a2a2f;
+  --string:#c8f03c; --string-dim:#4d5a1c; --brass:#f5b83d; --brass-dim:#5e4718;
+  --hot:#ff5a4a; --cool:#3fd0e6; --fg:#d9d9dc; --muted:#8c8c94;
+  --display:"Bungee", "Impact", system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--mono);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:20px 28px}
+.wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:11px}
+.top{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px}
+h1{font-family:var(--display);font-weight:400;color:var(--string);font-size:clamp(26px,7vw,40px);line-height:1;margin:0;letter-spacing:.01em}
+.eyebrow{color:var(--hot);letter-spacing:.22em;text-transform:uppercase;font-size:12px;margin:0}
+.lede{color:var(--muted);margin:0;max-width:60ch}
+.stage{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;aspect-ratio:4/5;max-height:35vh;max-height:35svh;width:100%;max-width:100%;touch-action:none;user-select:none;-webkit-user-select:none}
+@media (min-width:640px){.stage{aspect-ratio:16/10}}
+canvas{display:block;width:100%;height:100%}
+.tuning{position:absolute;right:12px;top:8px;font-size:12px;color:var(--muted);letter-spacing:.08em;pointer-events:none}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+button,select{font:inherit;font-size:16px;background:transparent;color:var(--fg);border:1.5px solid var(--line);border-radius:4px;padding:10px 16px;cursor:pointer}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--cool);outline-offset:2px}
+.rec{color:var(--hot);border-color:var(--hot);display:inline-flex;gap:10px;align-items:center}
+.rec .dot{width:14px;height:14px;border-radius:50%;background:var(--hot)}
+.rec[aria-pressed="true"] .dot{border-radius:2px;animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.35}}
+.timer{color:var(--cool);font-variant-numeric:tabular-nums}
+.midi{color:var(--cool);border-color:var(--cool);display:inline-flex;gap:10px;align-items:center}
+.midi .ring{width:12px;height:12px;border-radius:50%;border:2px solid var(--cool)}
+.midi[data-on="true"] .ring{background:var(--cool)}
+.retune{color:var(--string);border-color:var(--line)}
+.freeze{white-space:nowrap;color:var(--cool);border-color:var(--cool);display:inline-flex;gap:10px;align-items:center}
+.freeze .flake{width:12px;height:12px;border:2px solid var(--cool);transform:rotate(45deg)}
+.freeze[aria-pressed="true"]{background:var(--cool);color:var(--bg)}
+.freeze[aria-pressed="true"] .flake{border-color:var(--bg);background:var(--bg)}
+.stage.frozen{border-color:var(--cool)}
+.section{text-transform:uppercase;letter-spacing:.22em;font-size:12px;color:var(--hot);margin:6px 0 -6px}
+.msg{margin:0;color:var(--muted);max-width:62ch;min-height:1.5em}
+.msg.err{color:#ffb4a8}
+.msg.ok{color:var(--cool)}
+.msg a{color:var(--string)}
+.sliders{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:16px 18px;align-items:end}
+label{display:flex;flex-direction:column;gap:8px;text-transform:uppercase;letter-spacing:.16em;font-size:13px;color:var(--muted)}
+input[type=range]{accent-color:var(--string);width:100%}
+audio{width:100%;max-width:100%}
+.foot{color:var(--muted);font-size:12px;margin:0}
+.foot summary{cursor:pointer;text-transform:uppercase;letter-spacing:.16em;padding:6px 0}
+.foot p{margin:6px 0;max-width:62ch}
+.perf{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+[hidden]{display:none!important}
+.perf button{min-height:60px;padding:6px 2px;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:clamp(12px,3.4vw,15px);touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.perf small{display:inline-flex;align-items:center;gap:5px;font-size:9px;letter-spacing:.14em;text-transform:uppercase;opacity:.75}
+.perf .freeze .flake{width:8px;height:8px;border-width:1.5px}
+.voice{color:var(--string);border-color:var(--string-dim)}
+.voice[aria-pressed="true"]{color:var(--brass);border-color:var(--brass)}
+.tabs{display:flex;border-bottom:1px solid var(--line);margin-bottom:-4px;overflow-x:auto;scrollbar-width:none}
+.transport{display:grid;grid-template-columns:2fr 1fr 1fr 1.3fr;gap:8px}
+.arprow{display:grid;grid-template-columns:2fr 1fr;gap:8px}
+.arp{min-height:44px;min-width:0;padding:3px 4px;display:flex;align-items:center;justify-content:center;gap:10px;color:var(--cool);border-color:var(--line);touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.arp small{font-size:10px;letter-spacing:.12em;text-transform:uppercase;opacity:.8}
+.arp[aria-pressed="true"]{background:var(--cool);color:var(--bg);border-color:var(--cool)}
+.transport button{min-height:52px;min-width:0;padding:4px 2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:clamp(12px,3.4vw,15px);touch-action:manipulation;-webkit-tap-highlight-color:transparent;position:relative;overflow:hidden}
+.transport small{font-size:9px;letter-spacing:.14em;text-transform:uppercase;opacity:.75;position:relative}
+.transport span{position:relative}
+.transport button:disabled{opacity:.35;cursor:default}
+.loop{color:var(--hot);border-color:var(--hot)}
+.loop::before{content:"";position:absolute;inset:0 auto 0 0;width:calc(var(--p,0)*100%);background:var(--hot);opacity:.22}
+.loop[data-state="play"],.loop[data-state="stopped"]{color:var(--cool);border-color:var(--cool)}
+.loop[data-state="play"]::before{background:var(--cool)}
+.loop[data-state="rec"],.loop[data-state="dub"]{background:var(--hot);color:var(--bg)}
+.loop[data-state="rec"]::before,.loop[data-state="dub"]::before{background:var(--bg)}
+.click{color:var(--string)}
+.click[aria-pressed="true"]{border-color:var(--string)}
+.click[aria-pressed="true"].beat{background:var(--string);color:var(--bg)}
+.tap{align-self:end}
+.chords{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.chord{--c:var(--string);min-width:0;min-height:50px;padding:4px 0;border:1.5px solid var(--c);color:var(--c);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:clamp(12px,3.6vw,15px);line-height:1.1;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.chord small{font-size:10px;opacity:.75;letter-spacing:.08em}
+.chord[aria-pressed="true"]{background:var(--c);color:var(--bg)}
+.chord[aria-pressed="true"] small{opacity:.9}
+.curve{--a:0;--cc:var(--string);position:relative;height:38px;border:1.5px solid var(--line);border-radius:4px;touch-action:none;overflow:hidden;cursor:ew-resize;user-select:none;-webkit-user-select:none}
+.curve .fill{position:absolute;inset:0 auto 0 0;width:calc(var(--a)*100%);background:linear-gradient(90deg,var(--cc),var(--hot));opacity:.5}
+.curve .lab{position:relative;display:flex;justify-content:space-between;align-items:center;height:100%;padding:0 10px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg);pointer-events:none}
+.curve:focus-visible{outline:2px solid var(--cool);outline-offset:2px}
+.top{position:relative}
+.gfx{position:absolute;right:0;top:4px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:5px 8px;color:var(--string);border-color:var(--string)}
+.gfx[aria-pressed="false"]{color:var(--muted);border-color:var(--line)}
+.lite{color:var(--muted)}
+.lite[aria-pressed="true"]{color:var(--bg);background:var(--muted);border-color:var(--muted)}
+.sev[aria-pressed="true"]{background:var(--string);color:var(--bg);border-color:var(--string)}
+.tab{flex:none;border:0;border-bottom:2px solid transparent;border-radius:0;padding:10px 8px 8px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:12px}
+.tab[aria-selected="true"]{color:var(--string);border-bottom-color:var(--string)}
+.panel{min-height:126px;align-content:start;align-items:start}
+.midipanel select{width:100%;min-width:0}
+#midiPanic{color:var(--hot);border-color:var(--hot);align-self:end}
+.setup{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:14px}
+@media (prefers-reduced-motion:reduce){.rec[aria-pressed="true"] .dot{animation:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <h1>CORDE VIVE</h1>
+    <p class="eyebrow">Failbravo · MIDI live</p>
+    <button class="gfx" id="gfxBtn" aria-pressed="true">Grafica piena</button>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="cv" aria-label="Sei corde: tocca o trascina in verticale per pizzicare, tieni premuto e muovi per tirare e scorrere"></canvas>
+    <div class="tuning" id="tuningName"></div>
+  </div>
+
+  <!-- Accordi a colori: un pad per ogni accordo della tonalità; toccarlo riaccorda le sei corde su quell'accordo -->
+  <div class="chords" id="chords" role="group" aria-label="Accordi"></div>
+  <!-- Curva: trascina a destra e le note dell'accordo scivolano verso un accordo non armonico, anche mentre suonano -->
+  <div class="curve" id="curve" role="slider" tabindex="0" aria-label="Curva verso accordo non armonico" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+    <div class="fill"></div>
+    <div class="lab"><span>Curva</span><span id="curveLab">Cluster · 0%</span></div>
+  </div>
+
+  <!-- Comandi da live: grandi, subito sotto le corde, a portata di pollice -->
+  <div class="perf">
+    <button class="voice" id="voiceBtn" aria-pressed="false"><small>Suono</small><span id="voiceLabel">Corde</span></button>
+    <button class="freeze" id="freezeBtn" aria-pressed="false"><small><span class="flake"></span>Freeze</small><span>Riverbero</span></button>
+    <button class="freeze" id="dlFreezeBtn" aria-pressed="false"><small><span class="flake"></span>Freeze</small><span>Delay</span></button>
+    <button class="retune" id="retune"><small>Cambia</small><span>Riaccorda</span></button>
+  </div>
+
+  <!-- Trasporto: loop a battute sul BPM, click del metronomo -->
+  <div class="transport">
+    <button class="loop" id="loopBtn" data-state="empty"><small id="loopSmall">2 battute</small><span id="loopLabel">● Loop</span></button>
+    <button id="loopStop" disabled><small>Loop</small><span id="loopStopLabel">Stop</span></button>
+    <button id="loopClear" disabled><small>Loop</small><span>Svuota</span></button>
+    <button class="click" id="clickBtn" aria-pressed="false"><small>Click</small><span id="bpmShow">92 BPM</span></button>
+  </div>
+
+  <!-- Arpeggiatore: le corde che tocchi diventano le note dell'arpeggio, a tempo col BPM -->
+  <div class="arprow">
+    <button class="arp" id="arpBtn" aria-pressed="false"><small id="arpSmall">Up · 1/16</small><span>Arp</span></button>
+    <button class="arp" id="holdBtn" aria-pressed="false"><small id="holdSmall">trattieni</small><span>Hold</span></button>
+  </div>
+
+  <!-- Manopole raggruppate per pagina: niente scroll mentre suoni -->
+  <div class="tabs" role="tablist" aria-label="Controlli">
+    <button class="tab" role="tab" id="tab-suono" aria-controls="p-suono" aria-selected="true">Suono</button>
+    <button class="tab" role="tab" id="tab-spazio" aria-controls="p-spazio" aria-selected="false">Spazio</button>
+    <button class="tab" role="tab" id="tab-delay" aria-controls="p-delay" aria-selected="false">Delay</button>
+    <button class="tab" role="tab" id="tab-accordi" aria-controls="p-accordi" aria-selected="false">Accordi</button>
+    <button class="tab" role="tab" id="tab-tempo" aria-controls="p-tempo" aria-selected="false">Tempo</button>
+    <button class="tab" role="tab" id="tab-arp" aria-controls="p-arp" aria-selected="false">Arp</button>
+  </div>
+  <div class="panel sliders" id="p-suono" role="tabpanel" aria-labelledby="tab-suono">
+    <label for="respiro">Respiro<input type="range" id="respiro" min="0" max="100" value="40"></label>
+    <label for="risonanza">Risonanza<input type="range" id="risonanza" min="0" max="100" value="50"></label>
+  </div>
+  <div class="panel sliders" id="p-spazio" role="tabpanel" aria-labelledby="tab-spazio" hidden>
+    <label for="riverbero">Riverbero<input type="range" id="riverbero" min="0" max="100" value="45"></label>
+    <label for="resonator">Resonator<input type="range" id="resonator" min="0" max="100" value="35"></label>
+    <label for="octaver">Octaver<input type="range" id="octaver" min="0" max="100" value="30"></label>
+    <label for="octDir">Ottava<select id="octDir"><option value="-1">−1 ottava</option><option value="2">+1 ottava</option></select></label>
+  </div>
+  <div class="panel sliders" id="p-delay" role="tabpanel" aria-labelledby="tab-delay" hidden>
+    <label for="dlTime"><span>Tempo · <output id="dlTimeOut">380 ms</output></span><input type="range" id="dlTime" min="20" max="1500" value="380" step="1"></label>
+    <label for="dlMix">Delay<input type="range" id="dlMix" min="0" max="100" value="30"></label>
+    <label for="dlFb">Ripetizioni<input type="range" id="dlFb" min="0" max="100" value="45"></label>
+  </div>
+
+  <div class="panel sliders" id="p-accordi" role="tabpanel" aria-labelledby="tab-accordi" hidden>
+    <label for="chKey">Tonalità<select id="chKey"></select></label>
+    <label for="chMode">Modo<select id="chMode"><option value="maj">Maggiore</option><option value="min">Minore</option></select></label>
+    <label for="chSpread">Voicing<select id="chSpread"><option value="open">Aperto</option><option value="close">Stretto</option><option value="high">Acuto</option></select></label>
+    <button class="sev" id="chSev" aria-pressed="false">+ Settima</button>
+    <label for="curveType">Curva verso<select id="curveType">
+      <option value="cluster">Cluster</option><option value="alterato">Alterato</option>
+      <option value="quarti">Quarti di tono</option><option value="tritono">Tritono</option></select></label>
+    <button class="sev" id="curveSpring" aria-pressed="false">Molla</button>
+  </div>
+
+  <div class="panel sliders" id="p-arp" role="tabpanel" aria-labelledby="tab-arp" hidden>
+    <label for="arpStyle">Stile<select id="arpStyle">
+      <option value="up">Up</option><option value="down">Down</option><option value="updown">UpDown</option><option value="downup">DownUp</option>
+      <option value="upanddown">Up &amp; Down</option><option value="converge">Converge</option><option value="diverge">Diverge</option>
+      <option value="random">Random</option><option value="played">Played</option><option value="chord">Chord Trigger</option></select></label>
+    <label for="arpRate">Rate<select id="arpRate">
+      <option value="1">1/4</option><option value="0.5">1/8</option><option value="0.3333333">1/8T</option>
+      <option value="0.25" selected>1/16</option><option value="0.1666667">1/16T</option><option value="0.125">1/32</option></select></label>
+    <label for="arpGate"><span>Gate · <output id="arpGateOut">60%</output></span><input type="range" id="arpGate" min="5" max="200" value="60"></label>
+    <label for="arpOct">Ottave<select id="arpOct"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
+  </div>
+  <div class="panel sliders" id="p-tempo" role="tabpanel" aria-labelledby="tab-tempo" hidden>
+    <label for="bpm"><span>BPM · <output id="bpmOut">92</output></span><input type="range" id="bpm" min="40" max="220" value="92" step="1"></label>
+    <button class="tap" id="tapBtn">Tap tempo</button>
+    <label for="bars">Lunghezza loop<select id="bars"><option value="1">1 battuta</option><option value="2" selected>2 battute</option><option value="4">4 battute</option><option value="8">8 battute</option></select></label>
+  </div>
+
+  <!-- Setup: si tocca prima o dopo, non durante -->
+  <div class="setup">
+    <div class="row">
+      <button class="rec" id="recBtn" aria-pressed="false"><span class="dot"></span><span id="recLabel">Registra</span></button>
+      <span class="timer" id="timer">0:00</span>
+      <button class="midi" id="midiBtn" data-on="false"><span class="ring"></span><span id="midiLabel">Attiva MIDI</span></button>
+      <button class="lite" id="liteBtn" aria-pressed="false" title="Audio con meno carico per il telefono">Audio leggero</button>
+    </div>
+    <div class="sliders midipanel" id="midiPanel" hidden>
+      <label for="midiOut">Uscita<select id="midiOut"></select></label>
+      <label for="midiMode">Modo<select id="midiMode">
+        <option value="uno">Note</option>
+        <option value="mono">Note + bend</option>
+        <option value="corda">Per corda</option>
+      </select></label>
+      <label for="midiCh" id="midiChWrap">Canale<select id="midiCh"></select></label>
+      <label for="midiPb" id="midiPbWrap">Bend<select id="midiPb"><option value="2">±2</option><option value="12">±12</option><option value="24">±24</option><option value="48">±48</option></select></label>
+      <button id="midiPanic">Panic</button>
+    </div>
+    <p class="msg" id="msg" role="status"></p>
+    <audio id="take" controls hidden></audio>
+  </div>
+
+  <details class="foot">
+    <summary>Come si usa</summary>
+    <p>Pizzica, scorri, tira. Tocca una corda o trascina in verticale per strimpellare; tieni premuto e muovi in orizzontale per scorrere, in verticale per tirare. Con MIDI attivo ogni gesto arriva al synth mentre suoni.</p>
+    <p>Suono: passa da Corde a Tromba. Con la tromba la nota dura finché tieni il dito, un'ottava sopra; strimpellando escono note staccate.</p>
+    <p>Accordi: i pad colorati sotto le corde sono gli accordi della tonalità scelta nella scheda Accordi. Tocca un colore e le sei corde si accordano su quell'accordo, che puoi strimpellare ovunque; le corde prendono il suo colore. Ritocca il pad acceso, o Riaccorda, per tornare alle accordature libere. Nella scheda scegli tonalità, maggiore o minore, la settima e la disposizione delle note.</p>
+    <p>Loop: imposta il BPM e la lunghezza nella scheda Tempo, accendi il Click se vuoi il metronomo, poi tocca Loop e suona. Il loop registra i tuoi gesti per il numero di battute scelto e poi li ripete; ritocca Loop per sovraincidere, e ancora per smettere. Stop lo ferma, poi Loop lo fa ripartire da capo; Svuota lo cancella. Cambiando BPM con il loop in corso, il loop accelera o rallenta insieme al tempo. Il loop passa per tutti gli effetti e, con il MIDI attivo, esce anche sul synth (nel modo per corda, sui canali 8-13).</p>
+    <p>Curva: la striscia sotto i pad. Trascinala verso destra e ogni corda scivola, in modo continuo, verso un accordo non armonico: Cluster stringe tutte le note in un grappolo di semitoni, Alterato sposta alcune corde di un semitono, Quarti di tono le stona di un quarto o mezzo semitono, Tritono sposta metà delle corde di un tritono. Agisce anche sulle note che stanno già suonando, e con il MIDI arriva come pitch bend. Con Molla accesa, quando lasci la striscia torna all'accordo pulito; altrimenti resta dove l'hai lasciata.</p>
+    <p>Arp: con Arp acceso le corde non suonano direttamente. Quelle che tieni premute, o che attraversi strimpellando, entrano nell'arpeggio, che suona a tempo col BPM della scheda Tempo. Con Hold le note restano anche quando alzi le dita; se suoni un gruppo nuovo dopo averle lasciate tutte, sostituisce il precedente. Nella scheda Arp scegli lo stile (Up, Down, UpDown, DownUp, Up &amp; Down, Converge, Diverge, Random, Played, Chord Trigger), il rate (da 1/4 a 1/32, anche terzine), il gate e su quante ottave si estende. Tirare una corda tenuta piega anche le note dell'arpeggio; Curva, accordi, effetti e MIDI funzionano come sempre. Le note dell'arpeggio non vengono registrate nel loop.</p>
+    <p>Freeze Riverbero blocca la coda e la tiene sospesa. Freeze Delay chiude il loop e lo ripete identico. Puoi suonare sopra a entrambi.</p>
+    <p>Spazio: Resonator fa vibrare le corde ferme per simpatia; Octaver aggiunge la coda del riverbero un'ottava sotto o sopra. Delay: tempo libero da 20 a 1500 ms.</p>
+    <p>Audio leggero (in fondo, accanto a MIDI): si accende da solo sui telefoni. Riverbero con metà delle linee, una sola onda per nota, al massimo 8 note insieme. Se il telefono regge, puoi spegnerlo. Grafica piena / leggera (in alto a destra): la grafica leggera disegna a 30 fotogrammi, senza scia e con meno dettaglio; di default la grafica è piena. Le due scelte restano salvate su questo telefono.</p>
+    <p>Il suono funziona su qualsiasi telefono. Il MIDI verso un synth esterno richiede Chrome con la pagina aperta direttamente (la versione su GitHub Pages), non dentro un'altra app. Modi MIDI: <b>Note</b> (un canale) funziona con tutto, lo scorrimento salta di semitono; <b>Note + bend</b> rende lo scorrimento continuo su un synth monofonico, comandato dall'ultima corda toccata, con lo stesso range di bend impostato sul synth; <b>Per corda</b> manda ogni corda sul suo canale (2-7) per synth multitimbrici o MPE. Panic spegne le note rimaste appese.</p>
+  </details>
+</div>
+
+<script>
+(() => {
+  const TUNINGS = [
+    {name:"Standard · E A D G B E", notes:[64,59,55,50,45,40]},
+    {name:"DADGAD", notes:[62,57,55,50,45,38]},
+    {name:"Open G · D G D G B D", notes:[62,59,55,50,43,38]},
+    {name:"Pentatonica · A", notes:[69,64,62,60,57,52]},
+    {name:"Quinte · C G D A", notes:[69,62,55,48,41,36]},
+  ];
+  let tIdx = 0;
+  // ---------- Accordi a colori ----------
+  const NOTE_NAMES = ["C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"];
+  const SCALES = {maj:[0,2,4,5,7,9,11], min:[0,2,3,5,7,8,10]};
+  const ROMAN = ["I","II","III","IV","V","VI","VII"];
+  // un colore per grado: il I è il verde di casa, il IV e il V (le tensioni) sono i più caldi
+  const DEG_COLORS = ["#c8f03c","#3fd0e6","#8f9cff","#ff9a3d","#ff5a7a","#c27bff","#a7adb4"];
+  let chordDeg = null, chKey = 0, chMode = "maj", chSev = false, chSpread = "open";
+  function chordInfo(d){
+    const sc = SCALES[chMode], at = k => sc[(d+k)%7] + 12*Math.floor((d+k)/7) - sc[d];
+    const t3 = at(2), t5 = at(4), t7 = at(6);
+    const root = (chKey + sc[d]) % 12;
+    let q = t3 === 3 ? (t5 === 6 ? "°" : "m") : "";
+    if (chSev) q = t5 === 6 ? "ø" : t3 === 3 ? "m7" : t7 === 11 ? "Δ7" : "7";   // sigle corte: stanno nei pad anche su telefono
+    return {root, t3, t5, t7, name: NOTE_NAMES[root] + q, roman: t3 === 3 ? ROMAN[d].toLowerCase() : ROMAN[d]};
+  }
+  function chordNotes(d){
+    const c = chordInfo(d);
+    const r = 40 + ((c.root - 4 + 12) % 12);            // basso tra E2 e D#3, come una chitarra
+    const top = chSev ? r + 12 + c.t7 : r + 24;
+    let v;
+    if (chSpread === "close") v = [r, r+12, r+12+c.t3, r+12+c.t5, chSev ? r+12+c.t7 : r+24, r+24+c.t3];
+    else if (chSpread === "high") v = [r+12, r+12+c.t5, r+24, r+24+c.t3, r+24+c.t5, chSev ? r+24+c.t7 : r+36];
+    else v = [r, r+c.t5, chSev ? r+c.t7 : r+12, r+12+c.t3, r+12+c.t5, chSev ? top : r+24];
+    v.sort((a,b) => a-b);
+    return v.reverse();                                  // corda 0 = la più acuta
+  }
+  // ---------- Curva verso accordi non armonici ----------
+  let curveAmt = 0, curveType = "cluster", curveSpring = false;
+  const CURVE_NAMES = {cluster:"Cluster", alterato:"Alterato", quarti:"Quarti di tono", tritono:"Tritono"};
+  const CURVE_FIXED = {                       // spostamento massimo in semitoni per corda (0 = la più acuta)
+    alterato:[+1,-1,+1,0,-1,+1], quarti:[+0.5,-0.25,+0.5,-0.5,+0.25,-0.5], tritono:[+6,0,+6,0,+6,0]};
+  function curveOff(k){
+    if (!curveAmt) return 0;
+    if (curveType !== "cluster") return curveAmt * CURVE_FIXED[curveType][k];
+    // Cluster: le sei note si stringono in sei semitoni consecutivi attorno al loro centro, senza incrociarsi
+    const ns = curNotes(), order = [...ns.keys()].sort((a,b) => ns[a]-ns[b]);
+    const center = ns.reduce((a,b) => a+b, 0) / ns.length, rank = order.indexOf(k);
+    return curveAmt * (center + rank - 2.5 - ns[k]);
+  }
+  function curNotes(){ return chordDeg == null ? TUNINGS[tIdx].notes : chordNotes(chordDeg); }
+  const NS = 6, FRETS = 12, BEND_RANGE = 24;
+
+  const $ = id => document.getElementById(id);
+  // Modalità leggera: accesa di default sui dispositivi touch, la scelta resta su questo telefono
+  let lite = (() => { try { const v = localStorage.getItem("cv-lite"); if (v != null) return v === "1"; } catch(e){} return matchMedia("(pointer: coarse)").matches; })();
+  // La grafica ha un interruttore suo: di default è sempre quella completa
+  let liteGfx = (() => { try { return localStorage.getItem("cv-litegfx") === "1"; } catch(e){ return false; } })();
+  const cv = $("cv"), ctx2 = cv.getContext("2d"), stage = $("stage");
+  let W = 0, H = 0, DPR = 1;
+  function resize(){
+    DPR = Math.min(window.devicePixelRatio || 1, liteGfx ? 1 : 1.5);   // oltre 1.5 il telefono disegna il doppio dei pixel senza differenze visibili
+    const r = stage.getBoundingClientRect();
+    W = r.width; H = r.height;
+    cv.width = W * DPR; cv.height = H * DPR;
+    ctx2.setTransform(DPR,0,0,DPR,0,0);
+  }
+  new ResizeObserver(resize).observe(stage);
+  resize();
+
+  const padX = () => Math.max(28, W*0.06);
+  const stringY = i => { const top = H*0.1, bot = H*0.9; return top + (bot-top)*i/(NS-1); };
+  const nearestString = y => { let best=-1,d=1e9; for(let i=0;i<NS;i++){const dd=Math.abs(y-stringY(i)); if(dd<d){d=dd;best=i;}} return {i:best,d}; };
+  const fretAt = x => { const p = padX(); return Math.max(0, Math.min(FRETS, ((x-p)/(W-2*p))*FRETS)); };
+
+  // ---------- Audio ----------
+  let ac = null, master, comp, recDest;
+  let octaver, octTone, octOut, octLinked = false;
+  let dlIn, dl, dlFbDamped, dlFbHold, dlOut, dlFrozen = false;
+  let rvSum, resLinked = true;
+  let resIn, resOut, resLines = [], rvIn, rvOut, rvLines = [], frozen = false;
+  const RV_LENS = [0.0297,0.0371,0.0411,0.0437,0.0533,0.0617,0.0713,0.0797];
+  function audio(){
+    if (ac) return ac;
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    master = ac.createGain(); master.gain.value = 0.8;
+    comp = ac.createDynamicsCompressor();
+    master.connect(comp);
+
+    // Resonator: sei corde simpatiche (filtri comb accordati sull'accordatura corrente)
+    resIn = ac.createGain(); resIn.gain.value = 0.35;
+    resOut = ac.createGain();
+    for (let i=0;i<NS;i++){
+      const d = ac.createDelay(0.1), damp = onePole(ac, 3200), fb = ac.createGain();
+      resIn.connect(d); d.connect(damp); damp.connect(fb); fb.connect(d); damp.connect(resOut);
+      resLines.push({d, fb});
+    }
+    master.connect(resIn); resOut.connect(comp);
+
+    // Riverbero: rete di 8 linee di ritardo con matrice di Householder (permette il freeze infinito)
+    rvIn = ac.createGain();
+    const pre = ac.createDelay(0.2); pre.delayTime.value = 0.018;
+    const sum = ac.createGain(); sum.gain.value = -2 / RV_LENS.length;
+    rvOut = ac.createGain();
+    rvIn.connect(pre);
+    RV_LENS.forEach((L, k) => {
+      const d = ac.createDelay(0.2), damp = onePole(ac, 6500), g = ac.createGain(), tap = ac.createGain();
+      d.delayTime.value = L;
+      tap.gain.value = (k % 2 ? -1 : 1) / Math.sqrt(RV_LENS.length);
+      pre.connect(d); d.connect(damp); damp.connect(g); g.connect(d); g.connect(sum); sum.connect(d);
+      d.connect(tap); tap.connect(rvOut);
+      rvLines.push({L, damp, g, tap, linked:true});
+    });
+    rvSum = sum;
+    master.connect(rvIn); resOut.connect(rvIn); rvOut.connect(comp);
+
+    // Delay libero (tempo in ms, non legato a un BPM). Due anelli di feedback:
+    // uno smorzato per le ripetizioni normali, uno a guadagno 1 senza filtro per il freeze, che ripete il loop identico.
+    dlIn = ac.createGain();
+    dl = ac.createDelay(2);
+    const dlDamp = onePole(ac, 4500);
+    dlFbDamped = ac.createGain(); dlFbHold = ac.createGain(); dlFbHold.gain.value = 0;
+    dlOut = ac.createGain();
+    dlIn.connect(dl);
+    dl.connect(dlDamp); dlDamp.connect(dlFbDamped); dlFbDamped.connect(dl);
+    dl.connect(dlFbHold); dlFbHold.connect(dl);
+    dl.connect(dlOut);
+    master.connect(dlIn); resOut.connect(dlIn);
+    dlOut.connect(comp); dlOut.connect(rvIn);   // le ripetizioni finiscono anche nel riverbero
+
+    // Octaver dopo il riverbero, in parallelo: la coda (anche congelata) trasposta di un'ottava
+    octaver = makeShifter(ac);
+    octTone = ac.createBiquadFilter(); octTone.type = "lowpass"; octTone.frequency.value = 3500;
+    octOut = ac.createGain(); octOut.gain.value = 0;
+    octaver.output.connect(octTone); octTone.connect(octOut); octOut.connect(comp);
+
+    comp.connect(ac.destination);
+    recDest = ac.createMediaStreamDestination(); comp.connect(recDest);
+    setResonator(); setReverb(); setOctaver(); setDelay(); applyLite();
+    return ac;
+  }
+  // Passa-basso a un polo: guadagno mai sopra 1, quindi nei cicli di feedback non può fischiare
+  // (il passa-basso biquad di Web Audio ha un picco di risonanza che faceva innescare resonator e riverbero)
+  function onePole(ac, fc){
+    const a = Math.exp(-2*Math.PI*fc/ac.sampleRate);
+    return ac.createIIRFilter([1-a], [1, -a]);
+  }
+  function applyLite(){
+    if (ac){
+      // le linee staccate dal riverbero non arrivano più alle casse, quindi il browser smette di calcolarle
+      rvLines.forEach((l, k) => {
+        if (k < 4) return;
+        if (lite && l.linked){ l.g.disconnect(rvSum); l.tap.disconnect(rvOut); l.linked = false; }
+        else if (!lite && !l.linked){ l.g.connect(rvSum); l.tap.connect(rvOut); l.linked = true; }
+      });
+    }
+    resize();
+    $("liteBtn").setAttribute("aria-pressed", String(lite));
+  }
+  function gfxUI(){ $("gfxBtn").setAttribute("aria-pressed", String(!liteGfx)); $("gfxBtn").textContent = liteGfx ? "Grafica leggera" : "Grafica piena"; }
+  $("gfxBtn").addEventListener("click", () => {
+    liteGfx = !liteGfx;
+    try { localStorage.setItem("cv-litegfx", liteGfx ? "1" : "0"); } catch(e){}
+    gfxUI(); resize();
+  });
+  gfxUI();
+  $("liteBtn").setAttribute("aria-pressed", String(lite));
+  $("liteBtn").addEventListener("click", () => {
+    lite = !lite;
+    try { localStorage.setItem("cv-lite", lite ? "1" : "0"); } catch(e){}
+    applyLite();
+  });
+  function setResonator(){
+    if (!ac) return;
+    const v = $("resonator").value/100, t = ac.currentTime;
+    curNotes().forEach((n, i) => {
+      let f = mtof(n); while (f > 320) f /= 2;   // nei cicli Web Audio il ritardo minimo è un blocco di 128 campioni
+      resLines[i].d.delayTime.setTargetAtTime(1/f, t, 0.02);
+      resLines[i].fb.gain.setTargetAtTime(v ? 0.88 + v*0.105 : 0, t, 0.05);
+    });
+    resOut.gain.setTargetAtTime(v*0.55, t, 0.05);
+    if (v === 0 && resLinked){ master.disconnect(resIn); resLinked = false; }     // a zero non costa niente
+    else if (v > 0 && !resLinked){ master.connect(resIn); resLinked = true; }
+  }
+  function setReverb(){
+    if (!ac) return;
+    const v = $("riverbero").value/100, t = ac.currentTime;
+    const T = 0.8 + v*7;                         // secondi di coda (RT60)
+    for (const l of rvLines){
+      l.g.gain.setTargetAtTime(frozen ? 0.9995 : Math.pow(10, -3*l.L/T), t, frozen ? 0.01 : 0.08);
+    }
+    rvIn.gain.setTargetAtTime(frozen ? 0 : 1, t, frozen ? 0.04 : 0.02);
+    rvOut.gain.setTargetAtTime(frozen ? Math.max(0.1, v*0.25) : v*0.25, t, 0.08);
+  }
+  $("resonator").addEventListener("input", setResonator);
+  $("riverbero").addEventListener("input", setReverb);
+
+  // Pitch shifter a linee di ritardo modulate (due testine che si alternano con dissolvenza)
+  function makeShifter(ac){
+    const sr = ac.sampleRate, active = 0.1, fade = 0.05, L = Math.round(active*sr);
+    const buf = up => { const b = ac.createBuffer(1, L, sr), d = b.getChannelData(0);
+      for (let i=0;i<L;i++) d[i] = up ? (L-i)/L : i/L; return b; };
+    const fadeBuf = () => { const b = ac.createBuffer(1, L, sr), d = b.getChannelData(0), F = fade*sr;
+      for (let i=0;i<L;i++) d[i] = i < F ? Math.sqrt(i/F) : i >= L-F ? Math.sqrt(1-(i-(L-F))/F) : 1; return b; };
+    const src = b => { const s = ac.createBufferSource(); s.buffer = b; s.loop = true; return s; };
+    const input = ac.createGain(), output = ac.createGain();
+    const down = [src(buf(false)), src(buf(false))], up = [src(buf(true)), src(buf(true))];
+    const downG = [ac.createGain(), ac.createGain()], upG = [ac.createGain(), ac.createGain()];
+    const depth = [ac.createGain(), ac.createGain()], delays = [ac.createDelay(1), ac.createDelay(1)];
+    const fades = [src(fadeBuf()), src(fadeBuf())], mixes = [ac.createGain(), ac.createGain()];
+    for (let k=0;k<2;k++){
+      down[k].connect(downG[k]); up[k].connect(upG[k]); downG[k].connect(depth[k]); upG[k].connect(depth[k]);
+      depth[k].connect(delays[k].delayTime);
+      mixes[k].gain.value = 0; fades[k].connect(mixes[k].gain);
+      input.connect(delays[k]); delays[k].connect(mixes[k]); mixes[k].connect(output);
+    }
+    const t = ac.currentTime + 0.05, t2 = t + active - fade;
+    [down[0], up[0], fades[0]].forEach(n => n.start(t));
+    [down[1], up[1], fades[1]].forEach(n => n.start(t2));
+    return { input, output, set(mult){
+      const isUp = mult > 0, now = ac.currentTime;
+      for (let k=0;k<2;k++){
+        downG[k].gain.setTargetAtTime(isUp ? 0 : 1, now, 0.01);
+        upG[k].gain.setTargetAtTime(isUp ? 1 : 0, now, 0.01);
+        depth[k].gain.setTargetAtTime(0.5*active*Math.abs(mult), now, 0.01);  // -1 = ottava sotto, 2 = ottava sopra
+      }
+    }};
+  }
+  function setOctaver(){
+    if (!ac) return;
+    const v = $("octaver").value/100;
+    octaver.set(Number($("octDir").value));
+    octOut.gain.setTargetAtTime(v*1.1, ac.currentTime, 0.05);
+    if (v > 0 && !octLinked){ rvOut.connect(octaver.input); octLinked = true; }
+    else if (v === 0 && octLinked){ rvOut.disconnect(octaver.input); octLinked = false; }
+  }
+  $("octaver").addEventListener("input", setOctaver);
+  $("octDir").addEventListener("change", setOctaver);
+
+  function setDelay(){
+    const ms = Number($("dlTime").value);
+    $("dlTimeOut").textContent = ms + " ms";
+    if (!ac) return;
+    const t = ac.currentTime, fb = $("dlFb").value/100 * 0.92, mix = $("dlMix").value/100;
+    dl.delayTime.setTargetAtTime(ms/1000, t, 0.06);   // cambiare il tempo mentre suona fa scivolare l'altezza, come un nastro
+    dlIn.gain.setTargetAtTime(dlFrozen ? 0 : 1, t, 0.02);
+    dlFbDamped.gain.setTargetAtTime(dlFrozen ? 0 : fb, t, 0.02);
+    dlFbHold.gain.setTargetAtTime(dlFrozen ? 1 : 0, t, 0.02);
+    dlOut.gain.setTargetAtTime(dlFrozen ? Math.max(mix, 0.3) : mix, t, 0.05);
+  }
+  ["dlTime","dlFb","dlMix"].forEach(id => $(id).addEventListener("input", setDelay));
+  $("dlFreezeBtn").addEventListener("click", () => {
+    audio(); if (ac.state === "suspended") ac.resume();
+    dlFrozen = !dlFrozen;
+    $("dlFreezeBtn").setAttribute("aria-pressed", String(dlFrozen));
+    setDelay();
+  });
+  $("freezeBtn").addEventListener("click", () => {
+    audio(); if (ac.state === "suspended") ac.resume();
+    frozen = !frozen;
+    $("freezeBtn").setAttribute("aria-pressed", String(frozen));
+    stage.classList.toggle("frozen", frozen);
+    setReverb();
+  });
+  const mtof = m => 440 * Math.pow(2,(m-69)/12);
+  const respiro = () => 0.35 + ($("respiro").value/100)*5.5;      // secondi di coda
+  const risonanza = () => $("risonanza").value/100;
+
+  const voices = new Array(NS*2).fill(null);   // 0-5 le tue dita, 6-11 il loop
+  const vib = new Array(NS).fill(0);     // ampiezza visiva
+  const bendView = new Array(NS).fill(null); // {x, dy}
+
+  let brassOn = false;
+  const isBrass = () => brassOn;
+  $("voiceBtn").addEventListener("click", () => {
+    for (let i=0;i<NS;i++) stopVoice(i, 0.05);
+    brassOn = !brassOn;
+    $("voiceBtn").setAttribute("aria-pressed", String(brassOn));
+    $("voiceLabel").textContent = brassOn ? "Tromba" : "Corde";
+  });
+  // Schede dei controlli (la scelta resta su questo telefono)
+  const TABS = ["suono","spazio","delay","accordi","tempo","arp"];
+  function showTab(name){
+    for (const t of TABS){
+      const on = t === name;
+      $("tab-"+t).setAttribute("aria-selected", String(on));
+      $("p-"+t).hidden = !on;
+    }
+    try { localStorage.setItem("cv-tab", name); } catch(e){}
+  }
+  TABS.forEach(t => $("tab-"+t).addEventListener("click", () => showTab(t)));
+  try { const saved = localStorage.getItem("cv-tab"); if (TABS.includes(saved)) showTab(saved); } catch(e){}
+  const lastHit = new Array(NS).fill(-1e9);
+  function pluck(i, x, vel, held){
+    const nowMs = performance.now();
+    if (!held && nowMs - lastHit[i] < 45) return;
+    lastHit[i] = nowMs;
+    const base = curNotes()[i];
+    const fret = chordDeg == null ? Math.round(fretAt(x)) : 0;   // con un accordo acceso strimpelli ovunque e resta l'accordo
+    const brass = isBrass(), note = base + (brass ? 12 : 0) + fret;
+    if (arpOn){ arpAdd({i, note, vel, brass, held:!!held}); return; }
+    loopRec({type:"n", i, note, vel, held:!!held, brass});
+    sound(i, note, vel, held, brass);
+  }
+  function sound(i, note, vel, held, brass){
+    audio(); if (ac.state === "suspended") ac.resume();
+    stopVoice(i, 0.012, true);                      // la nota nuova ruba la corda: non serve registrarlo nel loop
+    const base = note; note = base + curveOff(i % NS);
+    if (brass) { blow(i, note, vel, held); voices[i].base = base; return; }
+    const t = ac.currentTime, rel = respiro(), res = risonanza();
+    const o1 = ac.createOscillator(), o2 = ac.createOscillator();
+    o1.type = "sawtooth"; o2.type = "triangle";
+    o1.frequency.value = mtof(note); o2.frequency.value = mtof(note) * 1.003;
+    const f = ac.createBiquadFilter(); f.type="lowpass";
+    f.Q.value = 1 + res*14;
+    const bright = mtof(note) * (3 + vel*10);
+    f.frequency.setValueAtTime(Math.min(bright*3, 16000), t);
+    f.frequency.exponentialRampToValueAtTime(Math.max(mtof(note)*1.2, 120), t + rel*0.6);
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.18 + vel*0.25, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + rel);
+    o1.connect(f); f.connect(g); g.connect(master);
+    o1.start(t); o1.stop(t+rel+0.05);
+    if (!lite){ o2.connect(f); o2.start(t); o2.stop(t+rel+0.05); }
+    voices[i] = {o1,o2,g,note,base,offset:0,end:t+rel,oscs: lite ? [o1] : [o1,o2], slot:i};
+    track(voices[i]);
+    vib[i % NS] = 0.6 + vel*0.8;
+    voices[i].midiN = midiNoteOn(i, note, vel);
+    const vv = voices[i];
+    setTimeout(() => { if (voices[i] === vv && vv.midiN != null){ midiNoteOff(i, vv.midiN); vv.midiN = null; } }, rel*1000);
+  }
+  // Tromba: due dente di sega, filtro che si apre sull'attacco, soffio, vibrato che entra dopo
+  // e una leggera saturazione. Suona finché tieni il dito sulla corda; strimpellando dà note staccate.
+  let brassCurve = null, breathBuf = null;
+  function blow(i, note, vel, held){
+    const t = ac.currentTime, f0 = mtof(note), res = risonanza();
+    const o1 = ac.createOscillator(), o2 = ac.createOscillator();
+    o1.type = o2.type = "sawtooth";
+    o1.frequency.setValueAtTime(f0*0.97, t); o1.frequency.setTargetAtTime(f0, t, 0.015);   // piccolo scoop d'attacco
+    o2.frequency.setValueAtTime(f0*0.97*1.004, t); o2.frequency.setTargetAtTime(f0*1.004, t, 0.015);
+    const lfo = ac.createOscillator(), lfoG = ac.createGain();
+    lfo.frequency.value = 5.3; lfoG.gain.setValueAtTime(0, t); lfoG.gain.setTargetAtTime(9, t + 0.3, 0.25);
+    lfo.connect(lfoG); lfoG.connect(o1.detune); lfoG.connect(o2.detune);
+    const f = ac.createBiquadFilter(); f.type = "lowpass"; f.Q.value = res*6;
+    const open = Math.min(f0*(5 + vel*7), 12000), body = Math.min(f0*(3 + vel*3), 9000);
+    f.frequency.setValueAtTime(f0*1.2, t);
+    f.frequency.linearRampToValueAtTime(open, t + 0.05);
+    f.frequency.setTargetAtTime(body, t + 0.06, 0.15);
+    if (!brassCurve){ brassCurve = new Float32Array(1024); for (let k=0;k<1024;k++){ const x = k/511.5 - 1; brassCurve[k] = Math.tanh(2.2*x)/Math.tanh(2.2); } }
+    const sat = ac.createWaveShaper(); sat.curve = brassCurve;
+    const g = ac.createGain(), peak = 0.16 + vel*0.16;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(peak, t + 0.035);
+    g.gain.setTargetAtTime(peak*0.72, t + 0.05, 0.1);
+    o1.connect(f); o2.connect(f); f.connect(sat); sat.connect(g); g.connect(master);
+    // soffio sull'attacco
+    if (!breathBuf){
+      breathBuf = ac.createBuffer(1, Math.round(0.09*ac.sampleRate), ac.sampleRate);
+      const nd = breathBuf.getChannelData(0);
+      for (let k=0;k<nd.length;k++) nd[k] = (Math.random()*2-1) * (1 - k/nd.length);
+    }
+    const nb = breathBuf;
+    const ns = ac.createBufferSource(), bp = ac.createBiquadFilter(), ng = ac.createGain();
+    ns.buffer = nb; bp.type = "bandpass"; bp.frequency.value = Math.min(f0*4, 4000); bp.Q.value = 1.5; ng.gain.value = 0.05 + vel*0.05;
+    ns.connect(bp); bp.connect(ng); ng.connect(master); ns.start(t);
+    [o1, o2, lfo].forEach(o => o.start(t));
+    const v = {o1, o2, g, note, offset:0, end:Infinity, oscs:[o1, o2, lfo], slot:i};
+    track(v);
+    voices[i] = v;
+    vib[i % NS] = 0.5 + vel*0.6;
+    voices[i].midiN = midiNoteOn(i, note, vel);
+    if (!held) setTimeout(() => { if (voices[i] === v) stopVoice(i, brassRelease()); }, 260);
+  }
+  const brassRelease = () => 0.04 + ($("respiro").value/100)*0.12;
+  function glide(i, semis){
+    const v = voices[i]; if (!v || !ac) return;
+    if (i < NS) loopRec({type:"g", i, semis});
+    if (Math.abs(semis - v.offset) < 0.01) return;
+    v.offset = semis;
+    const fq = mtof(v.note + semis), t = ac.currentTime;
+    v.o1.frequency.setTargetAtTime(fq, t, 0.012);
+    v.o2.frequency.setTargetAtTime(fq*1.003, t, 0.012);
+    midiBend(i, semis + v.note - v.midiN);
+  }
+  // Tetto alle note che suonano insieme (comprese quelle che si stanno spegnendo): oltre, la più vecchia si taglia
+  let alive = [];
+  function track(v){
+    const now = ac.currentTime, cap = lite ? 8 : 16;
+    alive = alive.filter(x => (x.until ?? x.end) > now);
+    alive.push(v);
+    while (alive.length > cap){
+      const old = alive.shift();
+      if (voices[old.slot] === old){ stopVoice(old.slot, 0.006, true); }
+      else { old.g.gain.cancelScheduledValues(now); old.g.gain.setTargetAtTime(0.0001, now, 0.006); for (const o of old.oscs) try{ o.stop(now + 0.04); }catch(e){} }
+      old.until = now;
+    }
+  }
+  function stopVoice(i, fade, quiet){
+    const v = voices[i]; if (!v) return;
+    if (i < NS && !quiet) loopRec({type:"s", i, fade});
+    voices[i] = null;
+    if (ac && ac.currentTime < v.end){
+      const t = ac.currentTime;
+      v.g.gain.cancelScheduledValues(t); v.g.gain.setTargetAtTime(0.0001, t, fade);
+      for (const o of v.oscs) try{ o.stop(t + Math.min(fade*5, 0.8)); }catch(e){}
+      v.until = t + Math.min(fade*5, 0.8);
+    }
+    midiNoteOff(i, v.midiN);
+  }
+
+  // ---------- Gesti ----------
+  const pointers = new Map();
+  const trail = [], TRAIL_MS = 1400;
+  stage.addEventListener("pointerdown", e => {
+    stage.setPointerCapture(e.pointerId);
+    const p = local(e);
+    const ns = nearestString(p.y);
+    const st = {x:p.x,y:p.y,t:performance.now(),held:null,startX:p.x,startY:p.y};
+    if (ns.d < Math.max(18, H*0.05)) { st.held = ns.i; pluck(ns.i, p.x, 0.55, true); }
+    pointers.set(e.pointerId, st);
+    trail.push({x:p.x,y:p.y,t:performance.now(),hot:true});
+  });
+  stage.addEventListener("pointermove", e => {
+    const st = pointers.get(e.pointerId); if (!st) return;
+    const p = local(e), now = performance.now();
+    trail.push({x:p.x,y:p.y,t:now,hot:st.held!=null});
+    if (st.held != null){
+      const i = st.held, dy = p.y - stringY(i);
+      const gap = H*0.8/(NS-1);
+      if (Math.abs(dy) > gap*0.95){ // uscito dalla corda: rilascia e torna a strimpellare
+        bendView[i] = null; glide(i,0); st.held = null;
+        if (arpOn) arpRelease(i);
+        else if (isBrass()) stopVoice(i, brassRelease());
+      } else {
+        // tira: verticale fino a +2 semitoni; scorri: orizzontale lungo i tasti
+        const bend = Math.min(2, Math.abs(dy)/(gap*0.5)*2);
+        const slide = fretAt(p.x) - Math.round(fretAt(st.startX));
+        glide(i, slide + bend);
+        bendView[i] = {x:p.x, dy};
+      }
+    } else {
+      // strimpella: ogni corda attraversata viene pizzicata
+      for (let i=0;i<NS;i++){
+        const y = stringY(i);
+        if ((st.y - y) * (p.y - y) < 0){
+          const sp = Math.abs(p.y-st.y)/Math.max(1, now-st.t);
+          pluck(i, p.x, Math.min(1, 0.25 + sp*0.6));
+        }
+      }
+    }
+    st.x = p.x; st.y = p.y; st.t = now;
+  });
+  const up = e => {
+    const st = pointers.get(e.pointerId); if (!st) return;
+    if (st.held != null){
+      bendView[st.held] = null;
+      if (arpOn){ arpRelease(st.held); if (voices[st.held] && voices[st.held].offset) glide(st.held, 0); }
+      else if (isBrass()) stopVoice(st.held, brassRelease());
+      else if (voices[st.held] && voices[st.held].offset) glide(st.held, 0);
+    }
+    pointers.delete(e.pointerId);
+  };
+  stage.addEventListener("pointerup", up);
+  stage.addEventListener("pointercancel", up);
+  let stageRect = stage.getBoundingClientRect();
+  const updRect = () => { stageRect = stage.getBoundingClientRect(); };
+  window.addEventListener("scroll", updRect, {passive:true}); window.addEventListener("resize", updRect);
+  new ResizeObserver(updRect).observe(stage);
+  function local(e){ return {x:e.clientX-stageRect.left, y:e.clientY-stageRect.top}; }
+
+  // ---------- Disegno ----------
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const C = {string:css("--string"), dim:css("--string-dim"), brass:css("--brass"), brassDim:css("--brass-dim"), hot:css("--hot"), cool:css("--cool"), line:css("--line")};
+  let lastFrame = 0;
+  function frame(now){
+    if (liteGfx && now - lastFrame < 30){ requestAnimationFrame(frame); return; }
+    lastFrame = now;
+    ctx2.clearRect(0,0,W,H);
+    const p = padX();
+    // traccia dei gesti
+    while (trail.length && (now - trail[0].t > TRAIL_MS || trail.length > 140)) trail.shift();
+    if (liteGfx) trail.length = 0;
+    if (trail.length > 1){
+      ctx2.lineWidth = 1.2;
+      // 4 fasce di trasparenza per 2 colori: al massimo 8 stroke per fotogramma, anche nei vortici
+      for (const hot of [false, true]) for (let band=0; band<4; band++){
+        ctx2.beginPath(); let any = false;
+        for (let k=1;k<trail.length;k++){
+          const a = trail[k-1], b = trail[k];
+          if (b.hot !== hot || b.t - a.t > 120) continue;
+          const life = 1 - (now - b.t)/TRAIL_MS;
+          if (Math.min(3, Math.floor(life*4)) !== band) continue;
+          ctx2.moveTo(a.x,a.y); ctx2.lineTo(b.x,b.y); any = true;
+        }
+        if (!any) continue;
+        ctx2.strokeStyle = hot ? C.hot : C.cool; ctx2.globalAlpha = (band+1)/4*0.45; ctx2.stroke();
+      }
+      ctx2.globalAlpha = 1;
+    }
+    // ponti
+    ctx2.fillStyle = C.dim;
+    ctx2.fillRect(p-6, H*0.04, 3, H*0.92); ctx2.fillRect(W-p+3, H*0.04, 3, H*0.92);
+    // segni dei tasti
+    ctx2.fillStyle = C.line;
+    for (const f of [3,5,7,9,12]){ const x = p + (W-2*p)*f/FRETS; ctx2.beginPath(); ctx2.arc(x, H*0.965, f===12?3:2, 0, 7); ctx2.fill(); }
+    // corde
+    for (let i=0;i<NS;i++){
+      const y = stringY(i), a = vib[i];
+      const brass = isBrass();
+      const lit = a > 0.02 || (brass && voices[i]);
+      if (chordDeg != null){ ctx2.strokeStyle = DEG_COLORS[chordDeg]; ctx2.globalAlpha = lit ? 1 : 0.4; }
+      else ctx2.strokeStyle = lit ? (brass ? C.brass : C.string) : (brass ? C.brassDim : C.dim);
+      if (brass && voices[i] && voices[i].end === Infinity) vib[i] = Math.max(vib[i], 0.35);  // la nota tenuta continua a vibrare
+      ctx2.lineWidth = 1.6 + (NS-1-i)*0.35;
+      ctx2.beginPath();
+      const bv = bendView[i];
+      if (bv){
+        ctx2.moveTo(p, y); ctx2.quadraticCurveTo(bv.x, y + bv.dy*2, W-p, y);
+      } else if (a > 0.02){
+        const ph = now/1000*(28+i*6);
+        const SEG = liteGfx ? 16 : 40;
+        for (let s=0;s<=SEG;s++){
+          const x = p + (W-2*p)*s/SEG, env = Math.sin(Math.PI*s/SEG);
+          const yy = y + Math.sin(ph + s*0.2)*a*6*env;
+          s ? ctx2.lineTo(x,yy) : ctx2.moveTo(x,yy);
+        }
+      } else { ctx2.moveTo(p,y); ctx2.lineTo(W-p,y); }
+      ctx2.stroke();
+      ctx2.globalAlpha = 1;
+      vib[i] *= 0.965;
+    }
+    // avanzamento del loop e battiti, lungo il bordo basso
+    if (ac && loopLen && loopState !== "empty" && loopState !== "stopped"){
+      const pos = ((ac.currentTime - loopStart) % loopLen) / loopLen;
+      $("loopBtn").style.setProperty("--p", pos.toFixed(2));
+      ctx2.fillStyle = (loopState === "play") ? C.cool : C.hot;
+      ctx2.fillRect(0, H-3, W*pos, 3);
+      const beats = bars*4;
+      ctx2.fillStyle = C.line;
+      for (let k=1;k<beats;k++) ctx2.fillRect(W*k/beats - (k%4 ? 0.5 : 1), H-(k%4 ? 6 : 10), k%4 ? 1 : 2, k%4 ? 6 : 10);
+    }
+    // corde nell'arpeggio: pallino pieno se tenuta, vuoto se trattenuta da Hold
+    if (arpOn && arpPool.length){
+      const seen = new Set();
+      for (const e of arpPool){
+        if (seen.has(e.i)) continue; seen.add(e.i);
+        const y = stringY(e.i), x = padX() - 14;
+        ctx2.beginPath(); ctx2.arc(x, y, 4, 0, 7);
+        if (arpPhysical(e)){ ctx2.fillStyle = C.cool; ctx2.fill(); } else { ctx2.strokeStyle = C.cool; ctx2.lineWidth = 1.5; ctx2.stroke(); }
+      }
+    }
+    // dita
+    for (const st of pointers.values()){
+      ctx2.fillStyle = C.hot;
+      ctx2.globalAlpha = 0.25; ctx2.beginPath(); ctx2.arc(st.x, st.y, 16, 0, 7); ctx2.fill();
+      ctx2.globalAlpha = 1; ctx2.beginPath(); ctx2.arc(st.x, st.y, 6, 0, 7); ctx2.fill();
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // ---------- Tempo e loop ----------
+  // Il loop registra i gesti (note, tirate, stop) con il loro istante, non l'audio:
+  // così è preciso al campione di tempo, passa per gli effetti e segue il BPM se lo cambi.
+  let bpm = 92, bars = 2, clickOn = false;
+  let loopState = "empty", loopEvents = [], loopStart = 0, loopLen = 0, lastPos = 0, lastCyc = 0;
+  let nextClick = 0, beatIdx = 0, clickTimer = null;
+  const beatDur = () => 60 / bpm;
+  function loopRec(ev){
+    if (!ac || (loopState !== "rec" && loopState !== "dub")) return;
+    const el = ac.currentTime - loopStart;
+    ev.t = el % loopLen; ev.cyc = Math.floor(el / loopLen);
+    let k = loopEvents.length; while (k > 0 && loopEvents[k-1].t > ev.t) k--;
+    loopEvents.splice(k, 0, ev);
+  }
+  function fire(from, to, cyc){            // suona gli eventi in (from, to], tranne quelli appena registrati in questo giro
+    for (const ev of loopEvents){
+      if (ev.t <= from || ev.t > to || ev.cyc === cyc) continue;
+      const slot = ev.i + NS;
+      if (ev.type === "n") sound(slot, ev.note, ev.vel, ev.held, ev.brass);
+      else if (ev.type === "g") glide(slot, ev.semis);
+      else stopVoice(slot, ev.fade);
+    }
+  }
+  const releaseLoopVoices = () => { for (let i=NS;i<NS*2;i++) stopVoice(i, 0.04); };
+  function blip(t, accent){
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = "square"; o.frequency.value = accent ? 1760 : 1180;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(accent ? 0.22 : 0.12, t + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+    o.connect(g); g.connect(ac.destination);       // dritto alle casse: il click non va nel loop, negli effetti né in Registra
+    o.start(t); o.stop(t + 0.06);
+    const flash = Math.max(0, (t - ac.currentTime)*1000);
+    setTimeout(() => { $("clickBtn").classList.add("beat"); setTimeout(() => $("clickBtn").classList.remove("beat"), 90); }, flash);
+  }
+  function tick(){
+    if (!ac) return;
+    const now = ac.currentTime;
+    while (nextClick < now + 0.12){
+      if (clickOn && nextClick >= now - 0.02) blip(nextClick, beatIdx % 4 === 0);
+      nextClick += beatDur(); beatIdx++;
+    }
+    if (loopState === "rec" || loopState === "play" || loopState === "dub"){
+      const el = now - loopStart, cyc = Math.floor(el / loopLen), pos = el - cyc*loopLen;
+      if (cyc !== lastCyc){
+        fire(lastPos, loopLen, lastCyc);
+        releaseLoopVoices();
+        if (loopState === "rec") loopState = "play";   // finite le battute, il loop parte da solo
+        fire(-1, pos, cyc);
+        loopUI();
+      } else fire(lastPos, pos, cyc);
+      lastPos = pos; lastCyc = cyc;
+    }
+    if (arpOn) arpTick(now);
+  }
+  // ---------- Arpeggiatore (stile Ableton) ----------
+  let arpOn = false, arpHold = false, arpPool = [], arpIdx = 0, arpNext = 0, arpDir = 1, arpSeq = 0;
+  const arpCfg = {style:"up", rate:0.25, gate:0.6, oct:1};
+  const ARP_NAMES = {up:"Up", down:"Down", updown:"UpDown", downup:"DownUp", upanddown:"Up & Down", converge:"Converge",
+                     diverge:"Diverge", random:"Random", played:"Played", chord:"Chord"};
+  const RATE_NAMES = {"1":"1/4","0.5":"1/8","0.3333333":"1/8T","0.25":"1/16","0.1666667":"1/16T","0.125":"1/32"};
+  const arpPhysical = e => e.held || (e.until && performance.now() < e.until);
+  function arpAdd(e){
+    // Hold: se nessuna nota è più tenuta, il nuovo gruppo sostituisce quello trattenuto
+    if (arpHold && !arpPool.some(arpPhysical)) arpPool = [];
+    arpPool = arpPool.filter(x => x.note !== e.note);
+    e.order = arpSeq++;
+    if (!e.held) e.until = performance.now() + 250;   // una corda attraversata strimpellando resta un attimo nell'arpeggio
+    const wasEmpty = !arpPool.length;
+    arpPool.push(e);
+    if (wasEmpty) arpStart();
+  }
+  function arpRelease(i){ for (const e of arpPool) if (e.i === i && e.held){ e.held = false; e.until = 0; } }
+  function arpPrune(){ if (!arpHold) arpPool = arpPool.filter(arpPhysical); }
+  function arpStart(){
+    audio(); if (ac.state === "suspended") ac.resume(); startClock();
+    const step = beatDur() * arpCfg.rate, ref = nextClick - beatIdx*beatDur();   // stessa griglia di click e loop
+    const now = ac.currentTime;
+    arpNext = ref + Math.ceil((now - ref) / step - 0.02) * step;
+    if (arpNext - now > step*0.5) arpNext = now;      // se il prossimo passo è lontano, parte subito
+    arpIdx = 0; arpDir = 1;
+  }
+  function arpSequence(){
+    const base = [...arpPool].sort((a,b) => arpCfg.style === "played" ? a.order-b.order : a.note-b.note);
+    const seq = [];
+    for (let o=0;o<arpCfg.oct;o++) for (const e of base) seq.push({...e, note: e.note + 12*o});
+    if (arpCfg.style !== "played") seq.sort((a,b) => a.note-b.note);
+    const uniq = []; { const seen = new Set(); for (const e of seq) if (!seen.has(e.note)){ seen.add(e.note); uniq.push(e); } }
+    seq.length = 0; seq.push(...uniq);                // la stessa altezza da due corde (o da due ottave) suona una volta sola
+    const n = seq.length; if (n < 2) return seq;
+    switch (arpCfg.style){
+      case "down": return seq.reverse();
+      case "updown": return seq.concat(seq.slice(1, -1).reverse());
+      case "downup": { const d = [...seq].reverse(); return d.concat(seq.slice(1, -1)); }
+      case "upanddown": return seq.concat([...seq].reverse());
+      case "converge": { const r = []; for (let a=0,b=n-1; a<=b; a++, b--){ r.push(seq[a]); if (a !== b) r.push(seq[b]); } return r; }
+      case "diverge": { const r = []; for (let a=0,b=n-1; a<=b; a++, b--){ r.push(seq[a]); if (a !== b) r.push(seq[b]); } return r.reverse(); }
+      default: return seq;
+    }
+  }
+  const arpTimers = new Array(NS).fill(0);
+  function arpPlay(e, len){
+    sound(e.i, e.note, e.vel, true, e.brass);
+    const v = voices[e.i];
+    clearTimeout(arpTimers[e.i]);
+    arpTimers[e.i] = setTimeout(() => { if (voices[e.i] === v) stopVoice(e.i, e.brass ? 0.03 : 0.05, true); }, len*1000);
+  }
+  function arpTick(now){
+    arpPrune();
+    if (!arpPool.length) return;
+    const step = beatDur() * arpCfg.rate;
+    let guard = 0;
+    while (arpNext <= now && guard++ < 4){
+      const len = step * arpCfg.gate;
+      if (arpCfg.style === "chord"){
+        const seen = new Set();
+        for (const e of [...arpPool].sort((a,b) => a.note-b.note)) if (!seen.has(e.i)){ seen.add(e.i); arpPlay(e, len); }
+      } else {
+        const seq = arpSequence();
+        if (seq.length){
+          const e = arpCfg.style === "random" ? seq[Math.floor(Math.random()*seq.length)] : seq[arpIdx % seq.length];
+          arpPlay(e, len);
+        }
+      }
+      arpIdx++; arpNext += step;
+    }
+    if (arpNext < now - step) arpNext = now;          // dopo un blocco del telefono non recupera a raffica
+  }
+  function arpUI(){
+    $("arpSmall").textContent = ARP_NAMES[arpCfg.style] + " · " + (RATE_NAMES[String(arpCfg.rate)] || "");
+    $("arpBtn").setAttribute("aria-pressed", String(arpOn));
+    $("holdBtn").setAttribute("aria-pressed", String(arpHold));
+    $("holdSmall").textContent = arpHold ? "attivo" : "trattieni";
+  }
+  $("arpBtn").addEventListener("click", () => {
+    arpOn = !arpOn;
+    if (!arpOn){ arpPool = []; }
+    else { audio(); if (ac.state === "suspended") ac.resume(); startClock(); }
+    arpUI();
+  });
+  $("holdBtn").addEventListener("click", () => {
+    arpHold = !arpHold;
+    if (!arpHold) arpPool = arpPool.filter(arpPhysical);
+    arpUI();
+  });
+  $("arpStyle").addEventListener("change", e => { arpCfg.style = e.target.value; arpIdx = 0; arpUI(); });
+  $("arpRate").addEventListener("change", e => { arpCfg.rate = Number(e.target.value); arpUI(); });
+  $("arpGate").addEventListener("input", e => { arpCfg.gate = Number(e.target.value)/100; $("arpGateOut").textContent = e.target.value + "%"; });
+  $("arpOct").addEventListener("change", e => { arpCfg.oct = Number(e.target.value); });
+  arpUI();
+
+  function startClock(){ if (!clickTimer) clickTimer = setInterval(tick, 5); }
+  function alignClick(from){ nextClick = from; beatIdx = 0; }
+  function loopUI(){
+    const b = $("loopBtn"), st = loopState;
+    b.dataset.state = st;
+    const L = {empty:["● Loop", bars + (bars > 1 ? " battute" : " battuta")], rec:["Registro", "suona ora"],
+               play:["+ Sovraincidi", "in loop"], dub:["Sovraincido", "tocca per smettere"], stopped:["▶ Riparti", "fermo"]}[st];
+    $("loopLabel").textContent = L[0]; $("loopSmall").textContent = L[1];
+    $("loopStop").disabled = st === "empty" || st === "stopped";
+    $("loopClear").disabled = st === "empty";
+    $("bars").disabled = st !== "empty";
+    if (st === "empty" || st === "stopped") b.style.setProperty("--p", 0);
+  }
+  function restart(){
+    const now = ac.currentTime;
+    loopStart = now; lastPos = -1; lastCyc = 0;
+    for (const ev of loopEvents) ev.cyc = -1;
+    alignClick(now);
+  }
+  $("loopBtn").addEventListener("click", () => {
+    audio(); if (ac.state === "suspended") ac.resume(); startClock();
+    if (loopState === "empty"){
+      loopLen = bars * 4 * beatDur(); loopEvents = [];
+      restart(); loopState = "rec";
+    } else if (loopState === "play") loopState = "dub";
+    else if (loopState === "dub") loopState = "play";
+    else if (loopState === "rec"){            // fermato prima della fine: il loop resta lungo quanto le battute scelte
+      loopState = "play";
+    } else if (loopState === "stopped"){ restart(); loopState = "play"; }
+    loopUI();
+  });
+  $("loopStop").addEventListener("click", () => { loopState = "stopped"; releaseLoopVoices(); loopUI(); });
+  $("loopClear").addEventListener("click", () => { loopState = "empty"; loopEvents = []; loopLen = 0; releaseLoopVoices(); loopUI(); });
+  $("clickBtn").addEventListener("click", () => {
+    audio(); if (ac.state === "suspended") ac.resume(); startClock();
+    clickOn = !clickOn; $("clickBtn").setAttribute("aria-pressed", String(clickOn));
+    if (clickOn && (loopState === "empty" || loopState === "stopped")) alignClick(ac.currentTime + 0.05);
+  });
+  function setBpm(n){
+    n = Math.max(40, Math.min(220, Math.round(n)));
+    if (ac && loopLen){                       // il loop segue il tempo: si stringe o si allarga restando in fase
+      const now = ac.currentTime, ratio = (60/n) / beatDur();
+      const el = now - loopStart;
+      for (const ev of loopEvents) ev.t *= ratio;
+      loopStart = now - el*ratio; loopLen *= ratio; lastPos *= ratio;
+    }
+    bpm = n;
+    if (ac){ const ref = loopLen ? loopStart : nextClick - beatDur(); const k = Math.ceil((ac.currentTime - ref) / beatDur()); nextClick = ref + k*beatDur(); beatIdx = k; }
+    $("bpm").value = n; $("bpmOut").textContent = n; $("bpmShow").textContent = n + " BPM";
+  }
+  $("bpm").addEventListener("input", e => setBpm(Number(e.target.value)));
+  $("bars").addEventListener("change", e => { bars = Number(e.target.value); loopUI(); });
+  let taps = [];
+  $("tapBtn").addEventListener("pointerdown", e => {
+    e.preventDefault();
+    const t = performance.now();
+    taps = taps.filter(x => t - x < 2500); taps.push(t);
+    if (taps.length >= 2){ const d = (taps[taps.length-1] - taps[0]) / (taps.length-1); setBpm(60000 / d); }
+  });
+  loopUI();
+
+  // ---------- Riaccorda ----------
+  function showTuning(){
+    const bent = curveAmt > 0.005 ? "  ⤳ " + CURVE_NAMES[curveType] + " " + Math.round(curveAmt*100) + "%" : "";
+    if (chordDeg == null){ $("tuningName").textContent = TUNINGS[tIdx].name + bent; return; }
+    const c = chordInfo(chordDeg);
+    $("tuningName").textContent = c.roman + " · " + c.name + " · " + [...new Set(curNotes().map(n => NOTE_NAMES[n%12]))].join(" ") + bent;
+    $("curve").style.setProperty("--cc", DEG_COLORS[chordDeg]);
+  }
+  function applyCurve(){                      // ripiega anche le note che stanno già suonando
+    const t = ac ? ac.currentTime : 0;
+    for (let i=0;i<NS*2;i++){
+      const v = voices[i]; if (!v || v.base == null) continue;
+      v.note = v.base + curveOff(i % NS);
+      const fq = mtof(v.note + v.offset);
+      v.o1.frequency.setTargetAtTime(fq, t, 0.03); v.o2.frequency.setTargetAtTime(fq*1.003, t, 0.03);
+      midiBend(i, v.offset + v.note - v.midiN);
+    }
+  }
+  function setCurve(a){
+    curveAmt = Math.max(0, Math.min(1, a));
+    const el = $("curve");
+    el.style.setProperty("--a", curveAmt.toFixed(3)); el.setAttribute("aria-valuenow", Math.round(curveAmt*100));
+    $("curveLab").textContent = CURVE_NAMES[curveType] + " · " + Math.round(curveAmt*100) + "%";
+    applyCurve(); showTuning();
+  }
+  let springRaf = 0;
+  function springBack(){                      // Molla: ritorno morbido all'accordo pulito
+    cancelAnimationFrame(springRaf);
+    const step = () => { if (curveAmt < 0.01){ setCurve(0); return; } setCurve(curveAmt * 0.82); springRaf = requestAnimationFrame(step); };
+    springRaf = requestAnimationFrame(step);
+  }
+  {
+    const el = $("curve");
+    const fromX = e => { const r = el.getBoundingClientRect(); return (e.clientX - r.left) / r.width; };
+    el.addEventListener("pointerdown", e => { cancelAnimationFrame(springRaf); el.setPointerCapture(e.pointerId); setCurve(fromX(e)); });
+    el.addEventListener("pointermove", e => { if (el.hasPointerCapture(e.pointerId)) setCurve(fromX(e)); });
+    const end = () => { if (curveSpring) springBack(); };
+    el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end);
+    el.addEventListener("keydown", e => {
+      if (e.key === "ArrowRight" || e.key === "ArrowUp"){ setCurve(curveAmt + 0.05); e.preventDefault(); }
+      if (e.key === "ArrowLeft" || e.key === "ArrowDown"){ setCurve(curveAmt - 0.05); e.preventDefault(); }
+      if (e.key === "Home") setCurve(0);
+    });
+    $("curveType").addEventListener("change", e => { curveType = e.target.value; setCurve(curveAmt); });
+    $("curveSpring").addEventListener("click", () => {
+      curveSpring = !curveSpring; $("curveSpring").setAttribute("aria-pressed", String(curveSpring));
+      if (curveSpring) springBack();
+    });
+  }
+  function renderChords(){
+    const box = $("chords"); box.innerHTML = "";
+    for (let d=0; d<7; d++){
+      const c = chordInfo(d), b = document.createElement("button");
+      b.className = "chord"; b.style.setProperty("--c", DEG_COLORS[d]);
+      b.setAttribute("aria-pressed", String(chordDeg === d));
+      b.innerHTML = "<small>" + c.roman + "</small><span>" + c.name + "</span>";
+      b.setAttribute("aria-label", "Accordo " + c.name);
+      b.addEventListener("pointerdown", e => { e.preventDefault(); setChord(chordDeg === d ? null : d); });
+      b.addEventListener("click", e => { if (e.detail === 0) setChord(chordDeg === d ? null : d); });   // tastiera
+      box.appendChild(b);
+    }
+  }
+  function setChord(d){
+    chordDeg = d;
+    [...$("chords").children].forEach((b, k) => b.setAttribute("aria-pressed", String(k === d)));
+    showTuning(); setResonator();
+    for (let i=0;i<NS;i++) vib[i] = Math.max(vib[i], 0.25);
+  }
+  const keySel = $("chKey");
+  NOTE_NAMES.forEach((n, k) => { const o = document.createElement("option"); o.value = k; o.textContent = n; keySel.appendChild(o); });
+  const chordOpts = () => { renderChords(); showTuning(); setResonator(); };
+  keySel.addEventListener("change", () => { chKey = Number(keySel.value); chordOpts(); });
+  $("chMode").addEventListener("change", e => { chMode = e.target.value; chordOpts(); });
+  $("chSpread").addEventListener("change", e => { chSpread = e.target.value; chordOpts(); });
+  $("chSev").addEventListener("click", () => { chSev = !chSev; $("chSev").setAttribute("aria-pressed", String(chSev)); chordOpts(); });
+  renderChords();
+  $("retune").addEventListener("click", () => {
+    for (let i=0;i<NS;i++) stopVoice(i, 0.05);
+    if (chordDeg != null) setChord(null); else tIdx = (tIdx+1) % TUNINGS.length;
+    showTuning(); setResonator();
+    for (let i=0;i<NS;i++) vib[i] = 0.4;
+  });
+  showTuning();
+
+  // ---------- Registrazione ----------
+  let rec = null, chunks = [], recStart = 0, recTimer = 0;
+  $("recBtn").addEventListener("click", () => {
+    const btn = $("recBtn");
+    if (rec){ rec.stop(); return; }
+    audio(); if (ac.state === "suspended") ac.resume();
+    if (!window.MediaRecorder){ say("Questo browser non sa registrare l'audio.", "err"); return; }
+    chunks = [];
+    rec = new MediaRecorder(recDest.stream);
+    rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+    rec.onstop = () => {
+      clearInterval(recTimer);
+      const blob = new Blob(chunks, {type: rec.mimeType || "audio/webm"});
+      const a = $("take"); a.src = URL.createObjectURL(blob); a.hidden = false;
+      rec = null; btn.setAttribute("aria-pressed","false"); $("recLabel").textContent = "Registra";
+    };
+    rec.start(); recStart = Date.now();
+    btn.setAttribute("aria-pressed","true"); $("recLabel").textContent = "Ferma";
+    recTimer = setInterval(() => { const s = Math.floor((Date.now()-recStart)/1000); $("timer").textContent = Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }, 250);
+    $("timer").textContent = "0:00";
+  });
+
+  // ---------- MIDI ----------
+  let midi = null, out = null, lastV = -1;
+  const store = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch(e){ return null; } };
+  const cfg = { mode: store("cv-mode") || "uno", ch: +(store("cv-ch") || 1), pb: +(store("cv-pb") || 2), port: store("cv-port") || "" };
+  const vel7 = [];
+  for (let c=1;c<=16;c++){ const o = document.createElement("option"); o.value = c; o.textContent = c; $("midiCh").appendChild(o); }
+  $("midiMode").value = cfg.mode; $("midiCh").value = cfg.ch; $("midiPb").value = cfg.pb;
+  const chOf = i => cfg.mode === "corda" ? ((i + 1) & 15) : (cfg.ch - 1);  // per corda: canali 2-7, loop 8-13
+  function framed(){ try { return window.self !== window.top; } catch(e){ return true; } }
+  function say(text, kind){ const m = $("msg"); m.textContent = text; m.className = "msg" + (kind ? " " + kind : ""); }
+  function syncPanel(){
+    $("midiChWrap").hidden = cfg.mode === "corda";
+    $("midiPbWrap").hidden = cfg.mode === "uno";
+  }
+  function describe(){
+    if (!out) return;
+    const who = out.name || "il synth";
+    if (cfg.mode === "uno") say("MIDI verso " + who + ", canale " + cfg.ch + ". Le note scattano di semitono in semitono: va bene con qualsiasi synth.", "ok");
+    else if (cfg.mode === "mono") say("MIDI verso " + who + ", canale " + cfg.ch + ". Lo scorrimento esce come pitch bend: imposta sul synth lo stesso range (±" + cfg.pb + ").", "ok");
+    else say("MIDI verso " + who + ". Ogni corda sul suo canale (2-7, loop 8-13), con bend ±" + cfg.pb + ": serve un synth multitimbrico o MPE.", "ok");
+  }
+  function listOutputs(){
+    const sel = $("midiOut"); const outs = midi ? [...midi.outputs.values()] : [];
+    sel.innerHTML = "";
+    for (const o of outs){ const opt = document.createElement("option"); opt.value = o.id; opt.textContent = o.name || "Uscita MIDI"; sel.appendChild(opt); }
+    if (!outs.length){ out = null; say("MIDI attivo, ma non vedo nessun synth. Collegalo via USB con un cavo OTG: verrà trovato da solo.", "err"); return; }
+    if (!out || !outs.includes(out)) out = outs.find(o => o.id === cfg.port) || outs[0];
+    sel.value = out.id;
+    setupBendRange(); describe();
+  }
+  function setupBendRange(){
+    if (!out || cfg.mode === "uno") return;
+    const chans = cfg.mode === "corda" ? [...Array(NS*2)].map((_, i) => chOf(i)) : [cfg.ch - 1];
+    for (const c of chans){ const s = 0xB0 | c; out.send([s,101,0]); out.send([s,100,0]); out.send([s,6,cfg.pb]); out.send([s,38,0]); out.send([s,101,127]); out.send([s,100,127]); }
+  }
+  function allOff(){
+    for (let i=0;i<NS*2;i++){ const v = voices[i]; if (v && v.midiN != null){ midiNoteOff(i, v.midiN); v.midiN = null; } }
+    if (!out) return;
+    for (let c=0;c<16;c++){ out.send([0xB0|c,123,0]); out.send([0xE0|c,0,64]); }
+  }
+  function changed(){ allOff(); syncPanel(); setupBendRange(); describe(); }
+  $("midiOut").addEventListener("change", e => { allOff(); out = midi.outputs.get(e.target.value) || out; cfg.port = out.id; store("cv-port", out.id); setupBendRange(); describe(); });
+  $("midiMode").addEventListener("change", e => { cfg.mode = e.target.value; store("cv-mode", cfg.mode); changed(); });
+  $("midiCh").addEventListener("change", e => { allOff(); cfg.ch = +e.target.value; store("cv-ch", cfg.ch); changed(); });
+  $("midiPb").addEventListener("change", e => { cfg.pb = +e.target.value; store("cv-pb", cfg.pb); changed(); });
+  $("midiPanic").addEventListener("click", () => { allOff(); say("Tutte le note spente.", "ok"); });
+  syncPanel();
+  $("midiBtn").addEventListener("click", async () => {
+    if (midi){ // spegni
+      allOff();
+      midi.onstatechange = null; midi = null; out = null;
+      $("midiBtn").dataset.on = "false"; $("midiLabel").textContent = "Attiva MIDI"; $("midiPanel").hidden = true; say("");
+      return;
+    }
+    if (!navigator.requestMIDIAccess){
+      say("Questo browser non supporta il MIDI. Apri la pagina in Chrome (Android o computer). Il suono qui funziona lo stesso.", "err"); return;
+    }
+    say("Chiedo l'accesso al MIDI…");
+    try {
+      midi = await navigator.requestMIDIAccess({sysex:false});
+    } catch(err){
+      midi = null;
+      if (framed()) say("Qui il MIDI è bloccato perché la pagina è aperta dentro un'altra app (per esempio l'anteprima di Claude). Il suono funziona lo stesso. Per il MIDI apri la versione pubblicata su GitHub Pages, direttamente in Chrome.", "err");
+      else say("Accesso MIDI negato. In Chrome tocca il lucchetto accanto all'indirizzo, poi Autorizzazioni, Dispositivi MIDI, Consenti, e riprova.", "err");
+      return;
+    }
+    $("midiBtn").dataset.on = "true"; $("midiLabel").textContent = "MIDI attivo"; $("midiPanel").hidden = false;
+    midi.onstatechange = listOutputs;
+    listOutputs();
+  });
+  function sendBend(c, semis){
+    const v = Math.max(0, Math.min(16383, Math.round(8192 + semis/cfg.pb*8191)));
+    out.send([0xE0|c, v & 127, v >> 7]);
+  }
+  function midiNoteOn(i, note, vel){          // la parte frazionaria (curva, quarti di tono) va nel pitch bend, dove c'è
+    const n = Math.round(note);
+    vel7[i] = Math.max(1, Math.min(127, Math.round(vel*127)));
+    if (!out) return n;
+    if (cfg.mode === "corda") sendBend(chOf(i), note - n);
+    else if (cfg.mode === "mono"){ lastV = i; sendBend(chOf(i), note - n); }
+    out.send([0x90|chOf(i), n, vel7[i]]); return n;
+  }
+  function midiNoteOff(i, note){ if (!out || note == null) return; out.send([0x80|chOf(i), note, 0]); }
+  function retrigger(i, k){                   // sposta la nota MIDI di k semitoni, senza staccare il suono
+    const v = voices[i]; const n = v.midiN + k;
+    if (n < 0 || n > 127) return;
+    out.send([0x90|chOf(i), n, vel7[i] || 90]); out.send([0x80|chOf(i), v.midiN, 0]);
+    v.midiN = n;
+  }
+  function midiBend(i, semis){                // semis = distanza dalla nota MIDI che sta suonando
+    if (!out) return;
+    const v = voices[i]; if (!v || v.midiN == null) return;
+    if (cfg.mode === "corda"){ sendBend(chOf(i), Math.max(-cfg.pb, Math.min(cfg.pb, semis))); return; }
+    if (cfg.mode === "uno"){ const k = Math.round(semis); if (k) retrigger(i, k); return; }
+    if (i !== lastV) return;                  // un solo bend per canale: lo comanda l'ultima corda toccata
+    if (Math.abs(semis) > cfg.pb - 0.5){ const k = Math.round(semis); retrigger(i, k); semis -= k; }
+    sendBend(chOf(i), semis);
+  }
+})();
+</script>
+</body>
+</html>
